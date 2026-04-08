@@ -1,3 +1,6 @@
 {
-	"name": "basic"
+	"name": "basic",
+	"dependencies": {
+		"someplugin": "1.0.0"
+	}
 }
