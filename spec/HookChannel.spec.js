@@ -1,8 +1,7 @@
 import {dirnameFromImportMeta} from "../src/node-util.js";
 import path from "path";
-import {loadHookChannel} from "../src/HookChannel.js";
+import {loadHookChannel, HookEvent} from "../src/exports-node.js";
 import fs, {promises as fsp} from "fs";
-import HookEvent from "../src/HookEvent.js";
 
 let __dirname=dirnameFromImportMeta(import.meta);
 
