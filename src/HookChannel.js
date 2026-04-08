@@ -3,9 +3,11 @@ import {resolveAllExports} from 'resolve-import'
 import resolvePackagePath from "resolve-package-path";
 import fs, {promises as fsp} from "fs";
 import HookEvent from "./HookEvent.js";
+import {arrayify} from "./js-util.js";
+import path from "path";
 
 export default class HookChannel {
-	constructor({keyword, exportPath, cwd, conditions}) {
+	constructor({keyword, exportPath, cwd, conditions, extraModuleDirs}) {
 		this.cwd=cwd;
 		this.keyword=keyword;
 		this.conditions=conditions;
@@ -17,6 +19,8 @@ export default class HookChannel {
 		this.moduleFilenames=[];
 		this.modules=[];
 		this.listeners={};
+
+		this.extraModuleDirs=arrayify(extraModuleDirs);
 	}
 
 	async load() {
@@ -27,6 +31,13 @@ export default class HookChannel {
 		for (let depName in this.pkg.dependencies) {
 			let p=resolvePackagePath(depName,this.pkgPath);
 			await this.processPackagePath(p);
+		}
+
+		for (let parentDir of this.extraModuleDirs) {
+			for (let dir of await fsp.readdir(parentDir)) {
+				let p=path.join(parentDir,dir,"package.json");
+				await this.processPackagePath(p);
+			}
 		}
 
 		for (let moduleFilename of this.moduleFilenames) {

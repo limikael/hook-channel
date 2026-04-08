@@ -1,0 +1,9 @@
+{
+	"name": "plugin2",
+	"version": "1.0.0",
+	"keywords": ["sys-plugin"],
+	"type": "module",
+	"exports": {
+		"./hello": "./hello-plugin2.js"
+	}
+}
