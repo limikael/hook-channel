@@ -52,17 +52,19 @@ npm install hook-channel
 import { loadHookChannel, HookEvent } from "hook-channel";
 
 const channel = await loadHookChannel({
-  keyword: "peac-plugin",
-  export: "peac-build-events",
+  keyword: "mysys-plugin",
+  export: "mysys-build-events",
+  cwd: "somedir"
 });
 ```
 
 This will:
 
-1. Scan `node_modules`
-2. Filter packages containing the keyword `"peac-plugin"`
-3. Resolve the export `"./peac-build-events"`
-4. Import all matching modules
+1. Locate the nearest `package.json` (based on `cwd`)
+2. Read its dependencies
+3. Filter packages containing the keyword, e.g. `"mysys-plugin"`
+4. Resolve the export `"./mysys-build-events"` using Node resolution
+5. Import all matching modules
 
 ---
 
