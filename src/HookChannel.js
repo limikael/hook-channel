@@ -49,6 +49,12 @@ export default class HookChannel {
 
 	async processPackagePath(depPackagePath) {
 		let depPkg=JSON.parse(await fsp.readFile(depPackagePath));
+		let pathPackageName=path.basename(path.dirname(depPackagePath))
+		if (pathPackageName!=depPkg.name)
+			throw new Error("Unexpected module name / path: "+depPackagePath);
+
+		if (depPkg.type!="module")
+			throw new Error("Not a module: "+depPackagePath);
 
 		if (this.keyword) {
 			if (!depPkg.keywords || !depPkg.keywords.includes(this.keyword))
