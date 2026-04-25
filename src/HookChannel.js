@@ -5,9 +5,11 @@ import fs, {promises as fsp} from "fs";
 import HookEvent from "./HookEvent.js";
 import {arrayify} from "./js-util.js";
 import path from "path";
+import HookChannelModule from "./HookChannelModule.js";
 
 export default class HookChannel {
-	constructor({keyword, exportPath, cwd, conditions, extraModuleDirs}) {
+	constructor({keyword, exportPath, cwd, conditions, extraModuleDirs, capsKeys, defaultEnableKey,
+			enableKey, disableKey}) {
 		this.cwd=cwd;
 		this.keyword=keyword;
 		this.conditions=conditions;
@@ -16,14 +18,17 @@ export default class HookChannel {
 		if (!this.exportPath.startsWith("."))
 			this.exportPath="./"+this.exportPath;
 
-		this.moduleFilenames=[];
+		//this.moduleFilenames=[];
 		this.modules=[];
 		this.listeners={};
-
 		this.extraModuleDirs=arrayify(extraModuleDirs);
+		this.capsKeys=arrayify(capsKeys);
+		this.defaultEnableKey=defaultEnableKey;
+		this.enableKey=enableKey;
+		this.disableKey=disableKey;
 	}
 
-	async load() {
+	async loadInfo() {
 		let res=await readPackageUp({cwd: this.cwd});
 		this.pkg=res.packageJson;
 		this.pkgPath=res.path;
@@ -39,12 +44,15 @@ export default class HookChannel {
 				await this.processPackagePath(p);
 			}
 		}
+	}
 
-		for (let moduleFilename of this.moduleFilenames) {
-			let mod=await import(moduleFilename);
-			this.modules.push(mod);
-			this.addListenerModule(mod);
-		}
+	async loadModules() {
+		if (this.modulesLoaded)
+			return;
+
+		this.modulesLoaded=true;
+		for (let mod of this.getModules({enabled: true}))
+			this.addListenerModule(await mod.getModule());
 	}
 
 	async processPackagePath(depPackagePath) {
@@ -65,7 +73,12 @@ export default class HookChannel {
 		if (!allExports[this.exportPath])
 			return;
 
-		this.moduleFilenames.push(allExports[this.exportPath].pathname);
+		this.modules.push(new HookChannelModule({
+			pkg: depPkg,
+			name: depPkg.name,
+			exportPathname: allExports[this.exportPath].pathname,
+			hookChannel: this
+		}));
 	}
 
 	addListener(type, listener, {priority}={}) {
@@ -95,6 +108,8 @@ export default class HookChannel {
 	}
 
 	async dispatch(ev, props={}) {
+		await this.loadModules();
+
 		if (typeof ev=="string")
 			ev=new HookEvent(ev,props);
 
@@ -107,10 +122,22 @@ export default class HookChannel {
 
 		return ev;
 	}
+
+	getModules({cap, enabled}={}) {
+		return this.modules.filter(mod=>{
+			if (enabled!==undefined && mod.isEnabled()!=enabled)
+				return false;
+
+			if (cap && !mod.getCaps().includes(cap))
+				return false;
+
+			return true;
+		});
+	}
 }
 
 export async function loadHookChannel(options) {
 	let channel=new HookChannel(options);
-	await channel.load();
+	await channel.loadInfo();
 	return channel;
 }

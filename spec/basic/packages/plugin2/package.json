@@ -3,6 +3,9 @@
 	"version": "1.0.0",
 	"keywords": ["sys-plugin"],
 	"type": "module",
+	"caps": ["hello","something"],
+	"otherCaps": ["something"],
+	"defaultEn": false,
 	"exports": {
 		"./hello": "./hello-plugin2.js"
 	}

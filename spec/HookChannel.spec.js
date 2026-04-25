@@ -19,19 +19,23 @@ describe("HookChannel",()=>{
 			conditions: ["peac"],
 			keyword: "sys-plugin",
 			exportPath: "hello",
-			extraModuleDirs: path.join(__dirname,"basic/packages")
+			extraModuleDirs: path.join(__dirname,"basic/packages"),
+			capsKeys: ["caps","otherCaps"],
+			defaultEnableKey: "defaultEn",
+			enableKey: "enablePlugins",
+			disableKey: "disablePlugins",
 		});
 
 		//console.log(channel.pkg);
 		expect(channel.pkg.name).toEqual("basic");
+		expect(channel.modules.length).toEqual(2);
+		expect(channel.modules[0].exportPathname).toContain("hello-peac.js");
 
-		//console.log(channel.moduleFilenames);
-		expect(channel.moduleFilenames[0]).toContain("hello-peac.js");
+		expect(channel.getModules({enabled: true}).length).toEqual(1);
 
-		//console.log(channel.listeners);
-		expect(channel.listeners.build.length).toEqual(2);
+		channel.pkg.enablePlugins="plugin2";
+		expect(channel.getModules({enabled: true}).length).toEqual(2);
 
-		//let ev=await channel.dispatch(new HookEvent("build",{messages: []}));
 		let ev=await channel.dispatch("build",{messages: []});
 		expect(ev.messages).toContain("hello-peac here");
 		expect(ev.messages).toContain("plugin2 here");
