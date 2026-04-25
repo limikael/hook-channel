@@ -8,6 +8,18 @@ export default class HookChannelModule {
 		this.hookChannel=hookChannel;
 	}
 
+	getName() {
+		return this.name;
+	}
+
+	getDescription() {
+		let desc=this.pkg.description;
+		if (!desc)
+			desc="";
+
+		return desc;
+	}
+
 	async getModule() {
 		if (!this.module)
 			this.module=await import(this.exportPathname);
