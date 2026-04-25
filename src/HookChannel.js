@@ -126,7 +126,7 @@ export default class HookChannel {
 		return ev;
 	}
 
-	getModules({cap, enabled}={}) {
+	getModules({cap, enabled, name}={}) {
 		return this.modules.filter(mod=>{
 			if (enabled!==undefined && mod.isEnabled()!=enabled)
 				return false;
@@ -134,8 +134,24 @@ export default class HookChannel {
 			if (cap && !mod.getCaps().includes(cap))
 				return false;
 
+			if (name && mod.getName()!=name)
+				return false;
+
 			return true;
 		});
+	}
+
+	getModuleByName(name) {
+		let mods=this.getModules({name});
+		if (!mods.length)
+			throw new Error("Not installed: "+name);
+
+		return mods[0];
+	}
+
+	isModuleInstalled(name) {
+		let mods=this.getModules({name});
+		return mods.length>0;
 	}
 
 	async enablePlugin(name, {save}={save: true}) {
@@ -147,7 +163,17 @@ export default class HookChannel {
 
 		this.pkg[this.enableKey]=arrayify(this.pkg[this.enableKey]).filter(n=>n!=name);
 		this.pkg[this.disableKey]=arrayify(this.pkg[this.disableKey]).filter(n=>n!=name);
-		this.pkg[this.enableKey].push(name);
+
+		if (this.isModuleInstalled(name) &&
+				!this.getModuleByName(name).isDefaultEnabled())
+			this.pkg[this.enableKey].push(name);
+
+		if (!this.pkg[this.enableKey].length)
+			delete this.pkg[this.enableKey]
+
+		if (!this.pkg[this.disableKey].length)
+			delete this.pkg[this.disableKey]
+
 		if (save)
 			await this.savePkgJson();
 	}
@@ -161,7 +187,17 @@ export default class HookChannel {
 
 		this.pkg[this.enableKey]=arrayify(this.pkg[this.enableKey]).filter(n=>n!=name);
 		this.pkg[this.disableKey]=arrayify(this.pkg[this.disableKey]).filter(n=>n!=name);
-		this.pkg[this.disableKey].push(name);
+
+		if (this.isModuleInstalled(name) &&
+				this.getModuleByName(name).isDefaultEnabled())
+			this.pkg[this.disableKey].push(name);
+
+		if (!this.pkg[this.enableKey].length)
+			delete this.pkg[this.enableKey]
+
+		if (!this.pkg[this.disableKey].length)
+			delete this.pkg[this.disableKey]
+
 		if (save)
 			await this.savePkgJson();
 	}

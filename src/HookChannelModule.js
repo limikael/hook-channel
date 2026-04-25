@@ -41,6 +41,15 @@ export default class HookChannelModule {
 		return caps;
 	}
 
+	isDefaultEnabled() {
+		let enabled=true;
+		if (this.hookChannel.defaultEnableKey &&
+				this.pkg.hasOwnProperty([this.hookChannel.defaultEnableKey]))
+			enabled=this.pkg[this.hookChannel.defaultEnableKey];
+
+		return enabled;
+	}
+
 	isEnabled() {
 		let enabled=true;
 		if (this.hookChannel.defaultEnableKey &&
@@ -55,6 +64,6 @@ export default class HookChannelModule {
 				arrayify(this.hookChannel.pkg[this.hookChannel.enableKey]).includes(this.name))
 			enabled=true;
 
-		return enabled;		
+		return enabled;
 	}
 }
