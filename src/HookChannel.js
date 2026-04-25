@@ -1,4 +1,4 @@
-import {readPackageUp} from "read-package-up";
+import {packageUp} from "package-up";
 import {resolveAllExports} from 'resolve-import'
 import resolvePackagePath from "resolve-package-path";
 import fs, {promises as fsp} from "fs";
@@ -29,11 +29,14 @@ export default class HookChannel {
 	}
 
 	async loadInfo() {
-		let res=await readPackageUp({cwd: this.cwd});
-		this.pkg=res.packageJson;
-		this.pkgPath=res.path;
+		this.pkgPath=await packageUp({cwd: this.cwd});
+		this.pkg=JSON.parse(await fsp.readFile(this.pkgPath));
 
-		for (let depName in this.pkg.dependencies) {
+		let deps=this.pkg.dependencies;
+		if (!deps)
+			deps={};
+
+		for (let depName in deps) {
 			let p=resolvePackagePath(depName,this.pkgPath);
 			await this.processPackagePath(p);
 		}
@@ -133,6 +136,39 @@ export default class HookChannel {
 
 			return true;
 		});
+	}
+
+	async enablePlugin(name, {save}={save: true}) {
+		if (!this.enableKey || !this.disableKey)
+			throw new Error("Enable/disable not available");
+
+		this.modulesLoaded=false;
+		this.listeners={};
+
+		this.pkg[this.enableKey]=arrayify(this.pkg[this.enableKey]).filter(n=>n!=name);
+		this.pkg[this.disableKey]=arrayify(this.pkg[this.disableKey]).filter(n=>n!=name);
+		this.pkg[this.enableKey].push(name);
+		if (save)
+			await this.savePkgJson();
+	}
+
+	async disablePlugin(name, {save}={save: true}) {
+		if (!this.enableKey || !this.disableKey)
+			throw new Error("Enable/disable not available");
+
+		this.modulesLoaded=false;
+		this.listeners={};
+
+		this.pkg[this.enableKey]=arrayify(this.pkg[this.enableKey]).filter(n=>n!=name);
+		this.pkg[this.disableKey]=arrayify(this.pkg[this.disableKey]).filter(n=>n!=name);
+		this.pkg[this.disableKey].push(name);
+		if (save)
+			await this.savePkgJson();
+	}
+
+	async savePkgJson() {
+		let content=JSON.stringify(this.pkg,null,2);
+		await fsp.writeFile(this.pkgPath,content);
 	}
 }
 

@@ -32,12 +32,20 @@ describe("HookChannel",()=>{
 		expect(channel.modules[0].exportPathname).toContain("hello-peac.js");
 
 		expect(channel.getModules({enabled: true}).length).toEqual(1);
-
-		channel.pkg.enablePlugins="plugin2";
-		expect(channel.getModules({enabled: true}).length).toEqual(2);
-
 		let ev=await channel.dispatch("build",{messages: []});
+		expect(ev.messages.length).toEqual(1);
 		expect(ev.messages).toContain("hello-peac here");
-		expect(ev.messages).toContain("plugin2 here");
+
+		await channel.enablePlugin("plugin2", {save: false});
+		let ev2=await channel.dispatch("build",{messages: []});
+		expect(ev2.messages.length).toEqual(2);
+		expect(ev2.messages).toContain("hello-peac here");
+		expect(ev2.messages).toContain("plugin2 here");
+
+		await channel.disablePlugin("plugin2", {save: false});
+		await channel.disablePlugin("someplugin", {save: false});
+		let ev3=await channel.dispatch("build",{messages: []});
+		expect(ev3.messages.length).toEqual(0);
+
 	});
 });
