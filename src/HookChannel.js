@@ -3,7 +3,7 @@ import {resolveAllExports} from 'resolve-import'
 import resolvePackagePath from "resolve-package-path";
 import fs, {promises as fsp} from "fs";
 import HookEvent from "./HookEvent.js";
-import {arrayify} from "./js-util.js";
+import {arrayify, DeclaredError} from "./js-util.js";
 import path from "path";
 import HookChannelModule from "./HookChannelModule.js";
 
@@ -151,12 +151,22 @@ export default class HookChannel {
 
 	isModuleInstalled(name) {
 		let mods=this.getModules({name});
+		//console.log(mods);
 		return mods.length>0;
+	}
+
+	isModuleKnown(name) {
+		return (this.isModuleInstalled(name) ||
+			arrayify(this.pkg[this.enableKey]).includes(name) ||
+			arrayify(this.pkg[this.disableKey]).includes(name))
 	}
 
 	async enablePlugin(name, {save}={save: true}) {
 		if (!this.enableKey || !this.disableKey)
 			throw new Error("Enable/disable not available");
+
+		if (!this.isModuleKnown(name))
+			throw new DeclaredError("Unknown plugin: "+name);
 
 		this.modulesLoaded=false;
 		this.listeners={};
@@ -181,6 +191,9 @@ export default class HookChannel {
 	async disablePlugin(name, {save}={save: true}) {
 		if (!this.enableKey || !this.disableKey)
 			throw new Error("Enable/disable not available");
+
+		if (!this.isModuleKnown(name))
+			throw new DeclaredError("Unknown plugin: "+name);
 
 		this.modulesLoaded=false;
 		this.listeners={};
