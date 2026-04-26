@@ -53,9 +53,13 @@ export default class HookChannel {
 		if (this.modulesLoaded)
 			return;
 
+		//let start=Date.now();
+
 		this.modulesLoaded=true;
 		for (let mod of this.getModules({enabled: true}))
 			this.addListenerModule(await mod.getModule());
+
+		//console.log("load: "+(Date.now()-start));
 	}
 
 	async processPackagePath(depPackagePath) {
@@ -222,7 +226,9 @@ export default class HookChannel {
 }
 
 export async function loadHookChannel(options) {
+	//let start=Date.now();
 	let channel=new HookChannel(options);
 	await channel.loadInfo();
+	//console.log("load hook channel: "+(Date.now()-start));
 	return channel;
 }
