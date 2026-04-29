@@ -6,10 +6,11 @@ import HookEvent from "./HookEvent.js";
 import {arrayify, DeclaredError} from "./js-util.js";
 import path from "path";
 import HookChannelModule from "./HookChannelModule.js";
+import {proxyComposeFb} from "./proxy-compose.js";
 
 export default class HookChannel {
-	constructor({keyword, exportPath, cwd, conditions, extraModuleDirs, capsKeys, defaultEnableKey,
-			enableKey, disableKey}) {
+	constructor({keyword, exportPath, cwd, conditions, extraModuleDirs, extraModules,
+			capsKeys, defaultEnableKey, enableKey, disableKey}) {
 		this.cwd=cwd;
 		this.keyword=keyword;
 		this.conditions=conditions;
@@ -22,6 +23,7 @@ export default class HookChannel {
 		this.modules=[];
 		this.listeners={};
 		this.extraModuleDirs=arrayify(extraModuleDirs);
+		this.extraModules=arrayify(extraModules);
 		this.capsKeys=arrayify(capsKeys);
 		this.defaultEnableKey=defaultEnableKey;
 		this.enableKey=enableKey;
@@ -47,19 +49,6 @@ export default class HookChannel {
 				await this.processPackagePath(p);
 			}
 		}
-	}
-
-	async loadModules() {
-		if (this.modulesLoaded)
-			return;
-
-		//let start=Date.now();
-
-		this.modulesLoaded=true;
-		for (let mod of this.getModules({enabled: true}))
-			this.addListenerModule(await mod.getModule());
-
-		//console.log("load: "+(Date.now()-start));
 	}
 
 	async processPackagePath(depPackagePath) {
@@ -88,46 +77,24 @@ export default class HookChannel {
 		}));
 	}
 
-	addListener(type, listener, {priority}={}) {
-		if (!this.listeners[type])
-			this.listeners[type]=[];
+	call=async (method, args)=>{
+		let methods=[];
 
-		if (priority)
-			listener.priority=priority;
-
-		if (!listener.priority)
-			listener.priority=10;
-
-		this.listeners[type].push(listener);
-		this.listeners[type].sort((a,b)=>a.priority-b.priority);
-	}
-
-	addListenerModule(mod) {
-		for (let name in mod) {
-			if (!["default"].includes(name)) {
-				let event=name;
-				if (mod[name].event)
-					event=mod[name].event;
-
-				this.addListener(event,mod[name]);
-			}
+		for (let channelModule of this.getModules({enabled: true})) {
+			let mod=await channelModule.getModule();
+			if (mod[method])
+				methods.push(mod[method]);
 		}
-	}
 
-	async dispatch(ev, props={}) {
-		await this.loadModules();
+		for (let mod of this.extraModules) {
+			if (mod[method])
+				methods.push(mod[method]);
+		}
 
-		if (typeof ev=="string")
-			ev=new HookEvent(ev,props);
+		methods.sort((a,b)=>a.priority??10-b.priority??10);
 
-		let listeners=[];
-		if (this.listeners[ev.type])
-			listeners.push(...this.listeners[ev.type]);		
-
-		for (let listener of listeners)
-			await listener(ev);
-
-		return ev;
+		for (let method of methods)
+			await method.bind(this)(...args);
 	}
 
 	getModules({cap, enabled, name}={}) {
@@ -231,4 +198,14 @@ export async function loadHookChannel(options) {
 	await channel.loadInfo();
 	//console.log("load hook channel: "+(Date.now()-start));
 	return channel;
+}
+
+export async function importChannel(options) {
+	let channel=new HookChannel(options);
+	await channel.loadInfo();
+	//console.log("load hook channel: "+(Date.now()-start));
+	return proxyComposeFb(channel,async function(method, args) {
+		//console.log("here...",this);
+		return await channel.call(method,args);
+	});
 }

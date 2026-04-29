@@ -1,6 +1,6 @@
 import {dirnameFromImportMeta} from "../src/node-util.js";
 import path from "path";
-import {loadHookChannel, HookEvent} from "../src/exports-node.js";
+import {importChannel} from "../src/exports-node.js";
 import fs, {promises as fsp} from "fs";
 
 let __dirname=dirnameFromImportMeta(import.meta);
@@ -14,7 +14,7 @@ describe("HookChannel",()=>{
 			{recursive:true}
 		);
 
-		let channel=await loadHookChannel({
+		let channel=await importChannel({
 			cwd: path.join(__dirname,"basic"),
 			conditions: ["peac"],
 			keyword: "sys-plugin",
@@ -26,26 +26,27 @@ describe("HookChannel",()=>{
 			disableKey: "disablePlugins",
 		});
 
-		//console.log(channel.pkg);
 		expect(channel.pkg.name).toEqual("basic");
 		expect(channel.modules.length).toEqual(2);
 		expect(channel.modules[0].exportPathname).toContain("hello-peac.js");
 
 		expect(channel.getModules({enabled: true}).length).toEqual(1);
-		let ev=await channel.dispatch("build",{messages: []});
+		let ev={messages: []};
+		await channel.build(ev);
 		expect(ev.messages.length).toEqual(1);
 		expect(ev.messages).toContain("hello-peac here");
 
 		await channel.enablePlugin("plugin2", {save: false});
-		let ev2=await channel.dispatch("build",{messages: []});
+		let ev2={messages: []};
+		await channel.build(ev2);
 		expect(ev2.messages.length).toEqual(2);
 		expect(ev2.messages).toContain("hello-peac here");
 		expect(ev2.messages).toContain("plugin2 here");
 
 		await channel.disablePlugin("plugin2", {save: false});
 		await channel.disablePlugin("someplugin", {save: false});
-		let ev3=await channel.dispatch("build",{messages: []});
+		let ev3={messages: []};
+		await channel.build(ev3);
 		expect(ev3.messages.length).toEqual(0);
-
 	});
 });
